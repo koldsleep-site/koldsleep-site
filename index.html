@@ -21,8 +21,8 @@ html, body {
 #titleLink {
   color: #000000;
   text-decoration: none;
-  font-size: clamp(2.8rem, 8vw, 5rem);
-  line-height: 1.1;
+  font-size: 25px;
+  line-height: 1.2;
   display: inline-block;
   max-width: 90vw;
   word-break: break-word;
@@ -45,9 +45,11 @@ html, body {
 const fonts = document.fonts ? Array.from(document.fonts).map(f => f.family) : [];
 const title = document.getElementById("titleLink");
 
-const availableFonts = fonts.length ? fonts : [
+const fallbackFonts = [
 "UnifrakturCook","Rubik Glitch","Monoton","Creepster","Metal Mania"
 ];
+
+const availableFonts = fonts.length ? fonts : fallbackFonts;
 
 const randomFont = availableFonts[Math.floor(Math.random() * availableFonts.length)];
 title.style.fontFamily = randomFont;
