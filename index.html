@@ -5,7 +5,28 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>koldsleep Archive</title>
 
-<link href="https://fonts.googleapis.com/css2?family=UnifrakturCook:wght@700&family=Rubik+Glitch&family=Rubik+Burned&family=Monoton&family=Creepster&family=Metal+Mania&family=Pirata+One&family=Fruktur&family=Caesar+Dressing&family=Black+Ops+One&family=Press+Start+2P&family=VT323&family=Silkscreen:wght@700&family=Major+Mono+Display&family=Wallpoet&family=Audiowide&family=Orbitron:wght@900&family=Syncopate:wght@700&family=Michroma&family=Electrolize&family=Staatliches&family=Anton&family=Bebas+Neue&family=Alfa+Slab+One&family=Righteous&family=Special+Elite&family=IM+Fell+English&family=IM+Fell+DW+Pica&family=Cinzel:wght@900&family=Bodoni+Moda:wght@900&family=Prata&family=Yeseva+One&family=Abril+Fatface&family=Zilla+Slab:wght@900&family=Spectral:wght@900&family=Chakra+Petch:wght@700&family=Teko:wght@700&family=Oswald:wght@700&family=Archivo+Black&family=Nova+Mono&family=Courier+Prime:wght@700&family=Cardo:wght@700&family=Playfair+Display:wght@900&family=EB+Garamond:wght@800&family=Libre+Baskerville:wght@700&family=Space+Grotesk:wght@700&family=Sora:wght@800&family=Fascinate&family=Fascinate+Inline&family=Stardos+Stencil:wght@700&family=Redacted&family=Redacted+Script&family=Bungee&family=Bungee+Outline&family=Bungee+Shade&family=Codystar:wght@700&family=Graduate&family=Iceland&family=Kumar+One&family=Kumar+One+Outline&family=Lacquer&family=Limelight&family=Megrim&family=New+Rocker&family=Nosifer&family=Oi&family=Plaster&family=Rakkas&family=Rampart+One&family=Revalia&family=Rye&family=Sancreek&family=Sarpanch:wght@900&family=Seymour+One&family=Smokum&family=Sonsie+One&family=Stalinist+One&family=Trade+Winds&family=Unica+One&family=Vast+Shadow&family=Viaoda+Libre&family=Zen+Dots&family=Zen+Tokyo+Zoo&family=Zen+Loop&family=Monofett&family=Butcherman&family=Ewert&family=Glass+Antiqua&family=Jacques+Francois+Shadow&family=Miltonian&family=Miltonian+Tattoo&family=Rubik+Moonrocks&family=Rubik+Wet+Paint&family=Rubik+Distressed&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?
+family=UnifrakturCook:wght@700&
+family=Rubik+Glitch&
+family=Monoton&
+family=Creepster&
+family=Metal+Mania&
+family=Press+Start+2P&
+family=Major+Mono+Display&
+family=Fascinate+Inline&
+family=Bungee+Shade&
+family=Codystar&
+family=Zen+Tokyo+Zoo&
+family=Pirata+One&
+family=New+Rocker&
+family=Black+Ops+One&
+family=Oi&
+family=Nosifer&
+family=Rakkas&
+family=Stardos+Stencil&
+family=Rubik+Moonrocks&
+family=Vast+Shadow&
+display=swap" rel="stylesheet">
 
 <style>
 html, body {
@@ -23,7 +44,6 @@ html, body {
   text-decoration: none;
   font-size: 25px;
   line-height: 1.2;
-  display: inline-block;
   max-width: 90vw;
   word-break: break-word;
 }
@@ -42,17 +62,33 @@ html, body {
 </a>
 
 <script>
-const fonts = document.fonts ? Array.from(document.fonts).map(f => f.family) : [];
-const title = document.getElementById("titleLink");
-
-const fallbackFonts = [
-"UnifrakturCook","Rubik Glitch","Monoton","Creepster","Metal Mania"
+const fonts = [
+"UnifrakturCook",
+"Rubik Glitch",
+"Monoton",
+"Creepster",
+"Metal Mania",
+"Press Start 2P",
+"Major Mono Display",
+"Fascinate Inline",
+"Bungee Shade",
+"Codystar",
+"Zen Tokyo Zoo",
+"Pirata One",
+"New Rocker",
+"Black Ops One",
+"Oi",
+"Nosifer",
+"Rakkas",
+"Stardos Stencil",
+"Rubik Moonrocks",
+"Vast Shadow"
 ];
 
-const availableFonts = fonts.length ? fonts : fallbackFonts;
+const title = document.getElementById("titleLink");
 
-const randomFont = availableFonts[Math.floor(Math.random() * availableFonts.length)];
-title.style.fontFamily = randomFont;
+const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
+title.style.fontFamily = `'${randomFont}', sans-serif`;
 
 const baseText = "koldsleep Archive";
 const modes = ["upper", "lower", "random"];
