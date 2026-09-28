@@ -141,7 +141,7 @@ if (mode === "upper") {
   const W = GRID_W * PIXEL;
   const H = GRID_H * PIXEL;
 
-  const TOP_GAP = 55;
+  const TOP_GAP = 0;
 
   const DAY_SPEED = 1.6;
   const NIGHT_SPEED = 18.0;
@@ -167,12 +167,11 @@ if (mode === "upper") {
   const KOLDSLEEP_URL =
     "https://koldsleep.netlify.app/";
 
-  const PAPER_REST_TIME = 1800;
+  const PAPER_FALL_DURATION = 4000;
 
-  // Browsers usually block a window opened later by an animation/timer.
-  // So the user's click reserves a tab/window, and the paper landing
-  // navigates that reserved tab to the randomly selected destination.
-  let pendingPortalWindow = null;
+  // The destination is chosen only after a real user click.
+  // Navigation happens in this same tab exactly 4 seconds later,
+  // which avoids popup blockers and blank-window failures.
   let pendingPortalURL = ARCHIVE_URL;
 
   let x = Math.max(20, window.innerWidth - W - 40);
@@ -196,14 +195,14 @@ if (mode === "upper") {
   let wasInsideFleeRadius = false;
   let surpriseStartedAt = 0;
 
-  let pendingPortalChoice = "archive";
-
   let paperStartX = 0;
   let paperVelocityY = 0;
   let paperPhase = 0;
   let paperAngle = 0;
   let paperLanded = false;
   let paperLandedAt = 0;
+  let paperStartedAt = 0;
+  let paperStartY = 0;
 
   let activeSleepZ = 0;
   let sleepZLiftAmount = 2;
@@ -647,43 +646,22 @@ if (mode === "upper") {
 
     // 50% Notion archive
     if (roll < 0.50) {
-      pendingPortalChoice = "archive";
       pendingPortalURL = ARCHIVE_URL;
       return;
     }
 
     // 25% sleepingstring
     if (roll < 0.75) {
-      pendingPortalChoice = "sleepingstring";
       pendingPortalURL = SLEEPINGSTRING_URL;
       return;
     }
 
     // 25% koldsleep.netlify
-    pendingPortalChoice = "koldsleep";
     pendingPortalURL = KOLDSLEEP_URL;
   }
 
-  function reservePortalWindow() {
-    // Reuse the same named tab/window rather than creating endless tabs.
-    // The original koldkitty page always stays open.
-    try {
-      pendingPortalWindow = window.open("about:blank", "koldsleepPortal");
-
-      if (pendingPortalWindow) {
-        try {
-          pendingPortalWindow.document.title = "koldsleep";
-        } catch (e) {}
-        try {
-          window.focus();
-        } catch (e) {}
-      }
-    } catch (e) {
-      pendingPortalWindow = null;
-    }
-  }
-
-  function turnIntoPaper() {
+  function turnIntoPaper(now = performance.now()) {
+    // This is the ONLY place where KITTY -> PAPER is allowed.
     form = PAPER;
 
     watching = false;
@@ -691,59 +669,23 @@ if (mode === "upper") {
     surprised = false;
     wasInsideFleeRadius = false;
 
-    // Every click has a destination:
-    // 50% Archive / 25% sleepingstring / 25% koldsleep.netlify
+    // Choose exactly one destination for this click.
     choosePortalDestination();
 
-    // Reserve the new browser tab/window while still inside
-    // the user's click gesture, so popup blockers are less likely
-    // to reject the landing-time navigation.
-    reservePortalWindow();
-
     paperStartX = x;
-    paperVelocityY = 0.50;
+    paperStartY = y;
+    paperStartedAt = now;
+    paperVelocityY = 0;
     paperPhase = 0;
     paperAngle = -0.20;
     paperLanded = false;
     paperLandedAt = 0;
   }
 
-  function openPortalOnLanding() {
-    let opened = false;
-
-    // Preferred path: navigate the tab/window reserved by the click.
-    if (
-      pendingPortalWindow &&
-      !pendingPortalWindow.closed
-    ) {
-      try {
-        pendingPortalWindow.location.href = pendingPortalURL;
-        pendingPortalWindow.focus();
-        opened = true;
-      } catch (e) {
-        opened = false;
-      }
-    }
-
-    // Fallback for browsers that discarded the reserved window.
-    // This may be blocked by strict popup settings because landing
-    // happens after the original click gesture.
-    if (!opened) {
-      try {
-        const fallback = window.open(
-          pendingPortalURL,
-          "koldsleepPortal"
-        );
-
-        opened = !!fallback;
-      } catch (e) {
-        opened = false;
-      }
-    }
-
-    pendingPortalWindow = null;
-
-    return opened;
+  function navigateToPortal() {
+    // Same-tab navigation is intentionally used here.
+    // Unlike delayed window.open(), this is not subject to popup blocking.
+    window.location.assign(pendingPortalURL);
   }
 
   function respawn() {
@@ -764,37 +706,43 @@ if (mode === "upper") {
 
     paperLanded = false;
     paperLandedAt = 0;
+    paperStartedAt = 0;
+    paperStartY = TOP_GAP;
   }
 
   function updatePaper(now, frameScale) {
-    if (!paperLanded) {
-      paperPhase += 0.13 * frameScale;
-      paperVelocityY += 0.055 * frameScale;
-      y += paperVelocityY * frameScale;
+    if (paperLanded) return;
 
-      x =
-        paperStartX +
-        Math.sin(paperPhase) * 30 +
-        Math.sin(paperPhase * 0.39) * 10;
+    const elapsed = Math.max(0, now - paperStartedAt);
+    const t = Math.min(1, elapsed / PAPER_FALL_DURATION);
 
-      paperAngle =
-        Math.sin(paperPhase * 1.35) * 0.55;
+    // Exact 4-second fall regardless of viewport height.
+    // Ease-in keeps the first moment light and lets the paper accelerate downward.
+    const eased = t * t;
+    const floorY = Math.max(TOP_GAP, window.innerHeight - H);
 
-      const floorY = Math.max(TOP_GAP, window.innerHeight - H);
+    paperPhase = t * Math.PI * 8.0;
 
-      if (y >= floorY) {
-        y = floorY;
-        paperLanded = true;
-        paperLandedAt = now;
-        paperAngle = 0.12;
+    x =
+      paperStartX +
+      Math.sin(paperPhase) * 30 +
+      Math.sin(paperPhase * 0.39) * 10;
 
-        // Link event is now 100% on every paper landing.
-        openPortalOnLanding();
-      }
-    } else {
-      if (now - paperLandedAt > PAPER_REST_TIME) {
-        respawn();
-      }
+    y =
+      paperStartY +
+      (floorY - paperStartY) * eased;
+
+    paperAngle =
+      Math.sin(paperPhase * 1.35) * 0.55;
+
+    if (t >= 1) {
+      y = floorY;
+      paperAngle = 0.12;
+      paperLanded = true;
+      paperLandedAt = now;
+
+      // 4 seconds after the click: navigate to the selected destination.
+      navigateToPortal();
     }
   }
 
@@ -854,12 +802,17 @@ if (mode === "upper") {
     cursorY = e.clientY;
   }, { passive: true });
 
-  canvas.addEventListener("pointerdown", (e) => {
+  canvas.addEventListener("click", (e) => {
+    // Only a genuine user click can transform the cat.
+    // Programmatic/synthetic events cannot trigger the paper state.
+    if (!e.isTrusted) return;
     if (e.button !== 0) return;
     if (form !== KITTY) return;
 
     e.preventDefault();
-    turnIntoPaper();
+    e.stopPropagation();
+
+    turnIntoPaper(performance.now());
   });
 
   window.addEventListener("resize", () => {
