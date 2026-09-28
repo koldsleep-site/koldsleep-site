@@ -68,7 +68,7 @@ html, body {
 <body>
 
 <a id="titleLink"
-   href="https://koldsleep.notion.site/koldsleep-Archive-17c75242e9ff80a591e5c45761d53314?source=copy_link">
+   href="https://k0ldsleep.notion.site/">
    koldsleep Archive
 </a>
 
@@ -159,7 +159,7 @@ if (mode === "upper") {
   const PAPER = 1;
 
   const ARCHIVE_URL =
-    "https://koldsleep.notion.site/koldsleep-Archive-17c75242e9ff80a591e5c45761d53314";
+    "https://k0ldsleep.notion.site/";
 
   const SLEEPINGSTRING_URL =
     "https://sleepingstring.netlify.app/";
@@ -203,6 +203,12 @@ if (mode === "upper") {
   let paperLandedAt = 0;
   let paperStartedAt = 0;
   let paperStartY = 0;
+  let paperFallDistance = 220;
+  let paperDriftPrimary = 18;
+  let paperDriftSecondary = 7;
+  let paperWobbleCycles = 1.8;
+  let paperAngleAmplitude = 0.35;
+  let paperFinalAngle = 0;
 
   let activeSleepZ = 0;
   let sleepZLiftAmount = 2;
@@ -294,32 +300,6 @@ if (mode === "upper") {
     "...................................."
   ];
 
-  const paperSprite = [
-    "....................................",
-    "....................................",
-    "....................................",
-    "............+++++++++++.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+#########+.............",
-    "............+++++++++++.............",
-    "....................................",
-    "....................................",
-    "....................................",
-    "....................................",
-    "....................................",
-    "...................................."
-  ];
 
   function rand(min, max) {
     return min + Math.random() * (max - min);
@@ -506,16 +486,18 @@ if (mode === "upper") {
     ctx.rotate(paperAngle);
     ctx.translate(-W / 2, -H / 2);
 
-    for (let gy = 0; gy < paperSprite.length; gy++) {
-      const row = paperSprite[gy];
-      for (let gx = 0; gx < row.length; gx++) {
-        if (row[gx] === "#") {
-          px(gx, gy, "#fff");
-        } else if (row[gx] === "+") {
-          px(gx, gy, "#b9b9b9");
-        }
-      }
-    }
+    const paperX = 12 * PIXEL;
+    const paperY = 3 * PIXEL;
+    const paperW = 11 * PIXEL;
+    const paperH = 15 * PIXEL;
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(paperX, paperY, paperW, paperH);
+
+    // nominal 1 CSS/canvas pixel gray outline
+    ctx.strokeStyle = "#b9b9b9";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(paperX + 0.5, paperY + 0.5, paperW - 1, paperH - 1);
 
     ctx.restore();
   }
@@ -644,19 +626,18 @@ if (mode === "upper") {
   function choosePortalDestination() {
     const roll = Math.random();
 
-    // 50% Notion archive
-    if (roll < 0.50) {
+    // Web beta excludes Instagram. Remaining desktop weights (10:20:20)
+    // are normalized to Archive 20% / Sleeping String 40% / Hoop Ring Chime 40%.
+    if (roll < 0.20) {
       pendingPortalURL = ARCHIVE_URL;
       return;
     }
 
-    // 25% sleepingstring
-    if (roll < 0.75) {
+    if (roll < 0.60) {
       pendingPortalURL = SLEEPINGSTRING_URL;
       return;
     }
 
-    // 25% koldsleep.netlify
     pendingPortalURL = KOLDSLEEP_URL;
   }
 
@@ -674,6 +655,17 @@ if (mode === "upper") {
 
     paperStartX = x;
     paperStartY = y;
+
+    const availableDown = Math.max(0, window.innerHeight - H - paperStartY);
+    const minFall = Math.min(80, availableDown);
+    const maxFall = Math.min(360, availableDown);
+    paperFallDistance = maxFall <= minFall ? availableDown : rand(minFall, maxFall);
+    paperDriftPrimary = rand(8, 26);
+    paperDriftSecondary = rand(2, 10);
+    paperWobbleCycles = rand(1.1, 2.5);
+    paperAngleAmplitude = rand(0.16, 0.46);
+    paperFinalAngle = rand(-0.18, 0.18);
+
     paperStartedAt = now;
     paperVelocityY = 0;
     paperPhase = 0;
@@ -715,33 +707,26 @@ if (mode === "upper") {
 
     const elapsed = Math.max(0, now - paperStartedAt);
     const t = Math.min(1, elapsed / PAPER_FALL_DURATION);
-
-    // Exact 4-second fall regardless of viewport height.
-    // Ease-in keeps the first moment light and lets the paper accelerate downward.
-    const eased = t * t;
-    const floorY = Math.max(TOP_GAP, window.innerHeight - H);
-
-    paperPhase = t * Math.PI * 8.0;
+    const eased = t * (0.92 + 0.08 * t);
+    const targetY = Math.min(window.innerHeight - H, paperStartY + paperFallDistance);
+    const phase = t * Math.PI * 2 * paperWobbleCycles;
 
     x =
       paperStartX +
-      Math.sin(paperPhase) * 30 +
-      Math.sin(paperPhase * 0.39) * 10;
+      Math.sin(phase) * paperDriftPrimary +
+      Math.sin(phase * 0.43 + 0.8) * paperDriftSecondary;
 
-    y =
-      paperStartY +
-      (floorY - paperStartY) * eased;
-
-    paperAngle =
-      Math.sin(paperPhase * 1.35) * 0.55;
+    x = Math.max(0, Math.min(window.innerWidth - W, x));
+    y = paperStartY + (targetY - paperStartY) * eased;
+    paperAngle = Math.sin(phase * 1.15) * paperAngleAmplitude;
 
     if (t >= 1) {
-      y = floorY;
-      paperAngle = 0.12;
+      y = targetY;
+      paperAngle = paperFinalAngle;
       paperLanded = true;
       paperLandedAt = now;
 
-      // 4 seconds after the click: navigate to the selected destination.
+      // Exactly 4 seconds after a genuine cat click, navigate in this tab.
       navigateToPortal();
     }
   }
