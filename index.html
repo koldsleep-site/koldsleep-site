@@ -32,6 +32,26 @@ html, body {
   word-break: break-word;
 }
 
+#archiveLabel { font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", Arial, sans-serif; font-weight: 400; }
+.kw-word {
+  display: inline-block;
+  white-space: nowrap;
+  font-weight: 400;
+  font-size: 1em;
+  line-height: inherit;
+}
+.kw-letter {
+  display: inline-block;
+  position: relative;
+  font-size: var(--kw-size, 1em);
+  font-weight: 400;
+  letter-spacing: var(--kw-tracking, 0em);
+  transform: translateY(var(--kw-baseline, 0em)) scaleX(var(--kw-stretch, 1));
+  transform-origin: 50% 70%;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
 #titleLink:hover {
   opacity: 0.6;
 }
@@ -74,58 +94,84 @@ html, body {
 
 <a id="titleLink"
    href="https://k0ldsleep.notion.site/">
-   koldsleep Archive
+   <span id="brandWord">koldsleep</span> <span id="archiveLabel">Archive</span>
 </a>
 
 <canvas id="koldkitty" width="108" height="72" aria-label="koldkitty"></canvas>
 
 <script>
-/* ============================================================
-   ORIGINAL ARCHIVE TITLE BEHAVIOR
-   ============================================================ */
-
-const fonts = [
-  "UnifrakturCook",
-  "Rubik Glitch",
-  "Monoton",
-  "Creepster",
-  "Metal Mania",
-  "Press Start 2P",
-  "Major Mono Display",
-  "Fascinate Inline",
-  "Bungee Shade",
-  "Codystar",
-  "Zen Tokyo Zoo",
-  "Pirata One",
-  "New Rocker",
-  "Black Ops One",
-  "Oi",
-  "Nosifer",
-  "Rakkas",
-  "Stardos Stencil",
-  "Rubik Moonrocks",
-  "Vast Shadow"
+/* Archive identity: use the contest glyph rules only for the brand word. */
+(() => {
+const dreamPrintEnglishFonts = [
+  'UnifrakturCook', 'Rubik Glitch', 'Monoton', 'Creepster',
+  'Metal Mania', 'Press Start 2P', 'Major Mono Display',
+  'Fascinate Inline', 'Bungee Shade', 'Codystar', 'Zen Tokyo Zoo',
+  'Pirata One', 'New Rocker', 'Black Ops One', 'Oi', 'Nosifer',
+  'Rakkas', 'Stardos Stencil', 'Rubik Moonrocks', 'Vast Shadow'
 ];
+const dreamPrintKoreanFonts = [
+  'Galmuri11', 'SongMyung', 'GowunBatang', 'NanumMyeongjo'
+];
+const rand = (min,max) => min + Math.random() * (max-min);
 
-const title = document.getElementById("titleLink");
-
-const randomFont = fonts[Math.floor(Math.random() * fonts.length)];
-title.style.fontFamily = `'${randomFont}', sans-serif`;
-
-const baseText = "koldsleep Archive";
-const modes = ["upper", "lower", "random"];
-const mode = modes[Math.floor(Math.random() * modes.length)];
-
-if (mode === "upper") {
-  title.textContent = baseText.toUpperCase();
-} else if (mode === "lower") {
-  title.textContent = baseText.toLowerCase();
-} else {
-  title.textContent = baseText.split("").map(c =>
-    Math.random() > 0.5 ? c.toUpperCase() : c.toLowerCase()
-  ).join("");
+function uniqueFonts(pool, count, requiredFont) {
+  // Draw without replacement: different glyphs in one word never reuse a font.
+  const available = [...pool];
+  const picked = [];
+  for (let i = 0; i < count; i++) {
+    if (!available.length) throw Error('Insufficient unique font families');
+    const idx = Math.floor(Math.random() * available.length);
+    picked.push(available.splice(idx, 1)[0]);
+  }
+  // Each word contains a pixel glyph, as in the earlier title/print identity.
+  if (!picked.includes(requiredFont)) {
+    picked[Math.floor(Math.random() * picked.length)] = requiredFont;
+  }
+  return picked;
 }
 
+function mixedCaseLetters(word) {
+  const letters = [...word].map(ch => Math.random() < .5 ? ch.toUpperCase() : ch.toLowerCase());
+  if (letters.every(ch => ch === ch.toUpperCase())) {
+    const idx = Math.floor(Math.random() * letters.length);
+    letters[idx] = letters[idx].toLowerCase();
+  }
+  if (letters.every(ch => ch === ch.toLowerCase())) {
+    const idx = Math.floor(Math.random() * letters.length);
+    letters[idx] = letters[idx].toUpperCase();
+  }
+  return letters;
+}
+
+function buildWord(word, inNav = false) {
+  const english = /^koldsleep$/i.test(word);
+  const letters = english ? mixedCaseLetters(word) : [...word];
+  const pool = english ? dreamPrintEnglishFonts : dreamPrintKoreanFonts;
+  const fonts = uniqueFonts(pool, letters.length, english ? 'Press Start 2P' : 'Galmuri11');
+  const wrapper = document.createElement('span');
+  wrapper.className = 'kw-word';
+  wrapper.setAttribute('aria-label', word);
+  // Accessibility: one semantic word, rather than nine separately announced letters.
+  for (let i = 0; i < letters.length; i++) {
+    const glyph = document.createElement('span');
+    glyph.className = 'kw-letter';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.textContent = letters[i];
+    glyph.style.fontFamily = `"${fonts[i]}", ${english ? 'serif' : 'sans-serif'}`;
+    // Like dream-print: vary size, horizontal scale, tracking, baseline.
+    // Restrict amplitudes inside the narrow navigation bar.
+    glyph.style.setProperty('--kw-size', `${rand(inNav ? .92 : .78, inNav ? 1.06 : 1.28).toFixed(3)}em`);
+    glyph.style.setProperty('--kw-stretch', rand(inNav ? .92 : .80, inNav ? 1.08 : 1.23).toFixed(3));
+    glyph.style.setProperty('--kw-baseline', `${rand(inNav ? -.04 : -.14, inNav ? .04 : .13).toFixed(3)}em`);
+    glyph.style.setProperty('--kw-tracking', `${rand(inNav ? -.09 : -.13, inNav ? 0 : .055).toFixed(3)}em`);
+    wrapper.append(glyph);
+  }
+  return wrapper;
+}
+
+const brand = document.getElementById('brandWord');
+brand.replaceWith(buildWord('koldsleep'));
+})();
 
 /* ============================================================
    KOLDKITTY WEB v1
